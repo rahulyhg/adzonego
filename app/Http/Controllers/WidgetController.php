@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Widget;
+use Redirect;
+use Illuminate\Support\Facades\Auth;
 
-class TestController extends Controller
+class WidgetController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -13,11 +16,10 @@ class TestController extends Controller
      */
     public function index()
     {
-        $beatles = ['John','Paul','George','Ringo'];
 
-        alert()->overlay('Listen','I hear beatle music!','success');
-        return view('test.index',compact('beatles'));
-        
+        $widgets = Widget::paginate(10);
+
+        return view('widget.index', compact('widgets'));
     }
 
     /**
@@ -27,7 +29,8 @@ class TestController extends Controller
      */
     public function create()
     {
-        //
+
+        return view('widget.create');
     }
 
     /**
@@ -38,7 +41,25 @@ class TestController extends Controller
      */
     public function store(Request $request)
     {
-        //
+
+        $this->validate($request, [
+
+            'name' => 'required|unique:widgets|string|max:30',
+
+        ]);
+
+        $slug = str_slug($request->name, "-");
+
+        $widget = Widget::create(['name' => $request->name,
+                                  'slug' => $slug,
+                                  'user_id' => Auth::id()]);
+
+        $widget->save();
+
+        alert()->success('Congrats!', 'You made a Widget');
+
+        return Redirect::route('widget.index');
+
     }
 
     /**
