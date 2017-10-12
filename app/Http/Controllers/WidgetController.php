@@ -6,9 +6,18 @@ use Illuminate\Http\Request;
 use App\Widget;
 use Redirect;
 use Illuminate\Support\Facades\Auth;
+use App\Http\AuthTraits\OwnsRecord;
 
 class WidgetController extends Controller
 {
+    use OwnsRecords;
+    public function __construct()
+    {
+
+        $this->middleware('auth', ['except' => ['index', 'show']] );
+
+    }
+    
     /**
      * Display a listing of the resource.
      *
@@ -68,9 +77,17 @@ class WidgetController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show(Widget $widget, $slug = '')
     {
-        //
+
+        if ($widget->slug !== $slug) {
+
+            return Redirect::route('widget.show', ['id' => $widget->id,
+                                                   'slug' => $widget->slug],
+                                                   301);
+        }
+
+        return view('widget.show', compact('widget'));
     }
 
     /**
@@ -79,9 +96,10 @@ class WidgetController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function edit($id)
+    public function edit(Widget $widget)
     {
-        //
+        
+        return view('widget.edit',compact('widget'));
     }
 
     /**
@@ -93,9 +111,29 @@ class WidgetController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
-    }
+        $this->validate($request, [
+            'name' => 'required|string|max:30|unique:widgets,name,' .$id
 
+        ]);
+
+        $widget = Widget::findOrFail($id);
+
+        if ($this->userNotOwnerOf($widget)){
+
+            dd('you are not the owner');
+
+        }
+
+        $slug = str_slug($request->name, "-");
+
+        $widget->update(['name' => $request->name,
+                         'slug' => $slug,
+                         'user_id' => Auth::id()]);
+
+        alert()->success('Congrats!', 'You updated a widget');
+
+        return Redirect::route('widget.show', ['widget' => $widget, 'slug' =>$slug]);
+    }
     /**
      * Remove the specified resource from storage.
      *
@@ -104,6 +142,8 @@ class WidgetController extends Controller
      */
     public function destroy($id)
     {
-        //
+        Widget::destroy($id);
+        alert()->overlay('Attention!','You delete a widget','error');
+        return Redirect::route('widget.index');
     }
 }
